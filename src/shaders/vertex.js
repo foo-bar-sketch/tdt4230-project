@@ -1,7 +1,6 @@
 /**
  * Source for the vertex shader
  */
-
 const vertexShader = `
     attribute vec3 position;
     attribute vec3 normal_in;

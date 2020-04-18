@@ -2,7 +2,6 @@
  * Source for the fragment shader
  * 
  */
-
 const fragmentShader = `
     varying highp vec3 color_out;
     varying highp vec3 normal_out;
@@ -28,11 +27,11 @@ const fragmentShader = `
         mediump vec3 fragCol = vec3(texCol);
         mediump vec3 diffColor = vec3(0.0);
         mediump vec3 specColor = vec3(0.0);
-        mediump float ambLightInt = 0.9;
+        mediump float ambLightInt = 1.0;
         mediump vec3 ambCol = ambLightInt * texCol.rgb;
         mediump float distanceCol = 1.0 / (particleDistance);
 
-        for(int i = 1; i < 2; i++) {
+        for(int i = 0; i < 2; i++) {
             mediump vec3 lightPos = vec3(0.0);
             if (i == 1) {
                 lightPos = centerLightPos;

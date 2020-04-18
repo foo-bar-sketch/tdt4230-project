@@ -15,7 +15,10 @@ def get_audio(url: str)->str:
     # first we get the file
     samples, sr = librosa.load(url)
     # normalise
-    #samples /= np.amax(samples)
+    sign = np.sign(samples)
+    samples = np.abs(samples)
+    samples /= np.amax(samples)
+    samples *= sign
     print('sampling rate: ' , sr)
     print('samples: ' , samples.shape)
     obj = {

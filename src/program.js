@@ -6,74 +6,42 @@ import initBuffer from './gl/buffer'
 import Program from './gl/program'
 import vertexShader from './shaders/vertex'
 import fragmentShader from './shaders/fragment'
-import { SquareParticle, Particle, Sphere } from './gl/shapes'
+import { nablaParticle, SquareParticle, Particle, Sphere } from './gl/shapes'
 import mat4 from 'gl-mat4'
 import { SceneNode, GEOMETRY, POINT_LIGHT } from './gl/scenegraph'
 import Audio from './elements/audio'
 import loadTexture from './gl/texture'
-import heart from '../res/mus/heart.wav'
-import cong from '../res/mus/cong.wav'
-import tex from '../res/textures/drop.png'
+import bubble from './gl/animation'
+//import heart from '../res/mus/heart.wav'
+import sails from '../res/mus/sails.wav'
+//import cong from '../res/mus/cong.wav'
+//import bad from '../res/mus/bad-guy.wav'
+//import tex from '../res/textures/blueSmokey.png'
+//import tex from '../res/textures/drop.png'
+//import tex from '../res/textures/fire2.jpg'
+import tex from '../res/textures/water2.png'
+//import tex from '../res/textures/sand.jpg'
 
-var numParticles = 2**14
+/**
+ * global variables
+ */
 
-var texture;
+var numParticles = 2**11
 
-var cons = document.createElement('div')
-cons.style.position = 'absolute'
-cons.style.top = 0
-cons.style.right = 0
-cons.style.fontFamily = 'Monospace'
-cons.style.color = '#aaa'
-cons.style.fontSize = '1em'
-cons.style.textAlign = 'right'
-//cons.style.backgroundImage = 'url(' + tex + ')'
-cons.setAttribute('id', 'console-box')
-document.body.appendChild(cons)
-cons.innerHTML = 'index: 0 <br /> played: 0'
+var texture
 
-var radiusAnim = []
-//for (let i = 10; i < 200; i += 0.25) {
-//    radiusAnim.push(i)
-//}
-for (let i = 10; i < 100; i+=2) {
-    radiusAnim.push(i)
-}
+var cons
+var panel
+var startButton
+var stopButton
+var particleCount
 
-var xRad = []
-for (let i=0; i < 4; i++) {
-    xRad.push(Math.random())
-}
-
-for (let i = 100; i > 10; i-=2) {
-    radiusAnim.push(i)
-}
-var index = 0
-
-var audioData = require('../res/mus/cong_data.json')
-
-var amplitudes = audioData.samples
-console.log('number of samples: ' + amplitudes.length)
-var sampleRate = audioData.sampling_rate
-
-var audioElement = Audio(cong)
-document.body.append(audioElement)
+var particleRhos = []
+var particleSpeed = []
+ 
+var particleVectors = []
 
 var particleNodes = []
-
-// make particles live in different shells
-var particleRhos = []
-for (let i = 0; i < numParticles; i++) {
-    let amount = Math.random()*2
-    particleRhos.push(amount)
-}
-
-// make particles have different speeds
-var particleSpeed = []
-for (let i = 0; i < numParticles; i++) {
-    let amount = Math.random()
-    particleSpeed.push(amount)
-}
 
 var cameraInfo = {
     position: [0.0, 0.0, -20.0],
@@ -85,6 +53,19 @@ var lights = {
     ids: ['centerLight', 'outsideLight']
 }
 
+/**
+ * Fix the audio data and eleemnt
+ */
+var audioData = require('../res/mus/sails_data.json')
+
+var amplitudes = audioData.samples
+var sampleRate = audioData.sampling_rate
+
+var audioElement = Audio(sails)
+
+/**
+ * Parametric equation for a sphere using spherical coordinates
+ */
 const superShape = {
     x: ( phi, theta, rho) => {
         return rho*Math.sin(phi)*Math.cos(theta)
@@ -97,14 +78,105 @@ const superShape = {
     }
 }
 
+/**
+ * Initiates the necessary global variables and the UI for settings
+ */
+export const init = () => {
+    document.body.style.backgroundColor = '#000'
+    panel = document.createElement('div')
+
+    panel.style.width = window.innerWidth-20 + 'px'
+    panel.style.margin = 0
+    panel.style.padding = '5px 2px 5px 2px'
+    panel.style.position = 'absolute'
+
+    startButton = document.createElement('button')
+    startButton.id = 'start-button'
+    startButton.style.float = 'left'
+    startButton.style.margin = '0 2px 0 2px'
+    startButton.innerHTML = 'start'
+    startButton.onclick = () => {
+        let val = parseInt(document.getElementById('particle-count').value)
+        numParticles = !isNaN(val) && val > 0 && val < 22 ? 2**val : 2**11
+
+        startButton.setAttribute('disabled', true)
+    
+        for (let i = 0; i < numParticles; i++) {
+            let amount = Math.random()
+            particleRhos.push(amount)
+        }
+
+        // make particles have different speeds
+        for (let i = 0; i < numParticles; i++) {
+            let amount = Math.random() * 0.1
+            particleSpeed.push(amount)
+        }
+
+        // create particle vectors
+        for (let i = 0; i < numParticles; i++) {
+            let delta = 2*Math.PI / Math.sqrt(numParticles)
+            let particlesPerPhi = Math.sqrt(numParticles) / 2
+            let theta = Math.floor(i / particlesPerPhi) * delta
+            let phi = (i % particlesPerPhi) * delta
+            if (Math.random() > 0.3) {
+                particleVectors.push([
+                    Math.sin(phi)*Math.cos(theta),
+                    Math.sin(phi)*Math.sin(theta),
+                    Math.cos(phi)
+                ])
+            } else {
+                const z = Math.random() > 0.5 ? -Math.random() : Math.random()
+                const y = Math.random() > 0.5 ? -Math.random() : Math.random()
+                const x = Math.random() > 0.5 ? -Math.random() : Math.random()
+                particleVectors.push([x, y, z])
+            }
+        }
+        run()
+    }
+
+    stopButton = document.createElement('button')
+    stopButton.style.float = 'left'
+    stopButton.style.margin = '0 2px 0 2px'
+    stopButton.innerHTML = 'stop'
+    stopButton.onclick = () => {
+        location.reload()
+    }
+
+    particleCount = document.createElement('input')
+    particleCount.id = 'particle-count'
+    particleCount.setAttribute('type', 'text')
+    particleCount.style.margin = '0 2px 0 2px'
+    particleCount.style.float = 'left'
+    particleCount.value = '11'
+    particleCount.style.width = 15 + 'px'
+
+    cons = document.createElement('div')
+    cons.style.float = 'right'
+    cons.style.fontFamily = 'Monospace'
+    cons.style.color = '#aaa'
+    cons.style.fontSize = '1em'
+    cons.style.textAlign = 'right'
+    //cons.style.backgroundImage = 'url(' + tex + ')'
+    cons.setAttribute('id', 'console-box')
+    cons.innerHTML = 'index: 0 <br /> played: 0'
+
+    panel.appendChild(startButton)
+    panel.appendChild(stopButton)
+    panel.appendChild(particleCount)
+    panel.appendChild(cons)
+
+    document.body.appendChild(panel)
+}
+
+
+/**
+ * Runs the animation
+ */
 export const run = () => {
     // set body style
     const body = document.body
     body.style.margin = 0
     body.style.padding = 0
-
-    //var audio = Audio('../res/mus/cong.wav')
-    //body.appendChild(audio)
 
     // create and add gl window
     const glWin = Canvas()
@@ -122,8 +194,8 @@ export const run = () => {
     gl.clearDepth(1.0)
     gl.enable(gl.DEPTH_TEST)
     gl.depthFunc(gl.LEQUAL)
-    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true)
-    gl.blendFunc(gl.ONE, gl.SRC_ALPHA)
+    //gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true)
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
     gl.enable(gl.BLEND)
 
     // shaders
@@ -170,21 +242,23 @@ export const run = () => {
     initScene(gl, numParticles, 'super', programInfo)
 
     var then = 0
+    var frameRate = 1/60
 
     const render = (now) => {
-        // clear color
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-        
         // time management
         now *= 0.001
         const deltaTime = now - then
         //console.log('delta time: ' + deltaTime)
         then = now
-
-        // update the frame
-        updateFrame(gl, programInfo, audioElement.currentTime)
-        // draw the frame
-        renderFrame(gl, programInfo)
+        // framerate cap
+        if (deltaTime >= frameRate) {
+            // clear color
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+            // update the frame
+            updateFrame(gl, programInfo, now, audioElement.currentTime, deltaTime)
+            // draw the frame
+            renderFrame(gl, programInfo)
+        }
         
         // keep animation going
         requestAnimationFrame(render)
@@ -203,7 +277,7 @@ const initScene = (gl, particles, shape, programInfo) => {
     // create the meshes for the scene
     var meshes = []
     for (let i = 0; i < particles; i++) {
-        meshes.push(Particle())
+        meshes.push(nablaParticle())
         //meshes.push(Sphere(0.2, 3, 3)) 
     }
     // create VAOs for all the meshes
@@ -215,7 +289,7 @@ const initScene = (gl, particles, shape, programInfo) => {
         particleNodes.push(SceneNode(
             [0.0, 0.0, 0.0], // position
             [0.0, 0.0, 0.0], // rotation
-            [0.06, 0.06, 0.06], // scale
+            [0.02, 0.02, 0.02], // scale
             [0.0, 0.0, 0.0], // reference point
             VAOs[i], // VAO id
             meshes[i].indices.length, // VAO count
@@ -225,56 +299,36 @@ const initScene = (gl, particles, shape, programInfo) => {
 }
 
 /**
- * Updates scene nodes according to animations
+ * Updates particles position
+ * @param {ctx} gl webgl context
+ * @param {Object} programInfo necessary info about shader programs
+ * @param {number} audioTime the current time of the audio track
+ * @param {number} currentTime the current time since start of animation
+ * @param {number} deltaTime time since last frame
  */
-const updateFrame = (gl, programInfo, now) => {
+const updateFrame = (gl, programInfo, audioTime, currentTime, deltaTime) => {
     let n = particleNodes.length
     // make the radius bounce
-    var index = Math.round(now*sampleRate)
-    cons.innerHTML = 'index: ' + index + '<br />played: ' + now
-    let rho = index < amplitudes.length ? 2 + Math.abs(amplitudes[index])*5 : 2
+    var maxRho = 1
+    var minRho = 0
+    var index = Math.round(audioTime*sampleRate) % amplitudes.length
+    cons.innerHTML = 'index: ' + index + '<br />played: ' + currentTime
+    let lastIndex = index > 0 ? index - 1 : 0
+    let nextIndex = index < n -1 ? index + 1: n - 1
+    let amplitude = amplitudes[index +2]
+    let rateOfChange = (amplitudes[nextIndex] + amplitude + amplitudes[lastIndex]) / 3
+    
     //console.log(rho)
-    gl.uniform1f(programInfo.uniformLoc.superRho, rho)
+    gl.uniform1f(programInfo.uniformLoc.superRho, amplitude*maxRho)
 
-    let xRho = Math.min(1.0, Math.abs(Math.cos(now/2*Math.PI)) + 0.3)
-    let yRho = Math.min(1.0, Math.abs(Math.sin(now/2*Math.PI)) + 0.3)
-    //index += 1
-    //index = index % radiusAnim.length
-    //let rho = radiusAnim[index]
-    for (let i = 0; i < n; i++) {
-        let currentNode = particleNodes[i]
-        let baseRho = particleRhos[i]
-        let deltaRho = Math.sin(rho*particleSpeed[i])
-        let delta = 5 * Math.PI / Math.sqrt(n)
-        let particlesPerPhi = Math.sqrt(n) / 2
-        let theta = Math.floor(i / particlesPerPhi) * delta
-        let phi = (i % particlesPerPhi) * delta
-        let position = [
-            currentNode.position[0] + superShape.x(phi, theta, deltaRho + rho*xRho),
-            currentNode.position[1] + superShape.y(phi, theta, deltaRho + rho*yRho),
-            currentNode.position[2] + superShape.z(phi, deltaRho)]
-        let particleRho = Math.sqrt(position[0]*position[0] + position[1]*position[1] + position[2]*position[2])
-        gl.uniform1f(programInfo.uniformLoc.particleDistance, particleRho)
-        if (particleRho > rho) {
-            currentNode.position = [
-                superShape.x(phi, theta, baseRho),
-                superShape.y(phi, theta, baseRho),
-                superShape.z(phi, baseRho)
-            ]
-        } else {
-            currentNode.position = position 
-        }
-        //currentNode.position = [superShape.x(phi, theta, rho), superShape.y(phi, theta, rho), superShape.z(phi, rho)]
-        currentNode.rotation[1] -= Math.PI/100
-        //currentNode.rotation[0] -= Math.PI/100
-        particleNodes[i] = currentNode
-    }
-    // update the transformations
+    // get the position of the nodes
+    particleNodes = bubble(particleNodes, particleRhos, particleVectors, audioTime, currentTime, amplitude, maxRho, minRho, superShape)
+
     updateTransformations()
 
     // rotate the camera so it will go around
-    cameraInfo.rotation = [0, cameraInfo.rotation[1] + Math.PI/100, 0]
-    cameraInfo.rotation[0] += Math.PI/100
+    cameraInfo.rotation = [0, cameraInfo.rotation[1] + Math.PI/300, 0]
+    //cameraInfo.rotation[0] += Math.PI/100
 
     // perspective matrix
     const fov = 45 * Math.PI / 180
@@ -339,6 +393,7 @@ const updateTransformations = () => {
 /**
  * Renders all the nodes
  * @param {ctx} gl webgl ctx
+ * @param {Object} programInfo necessary info about shader programs (attrib/uniform loc, etc.)
  */
 const renderNodes = (gl, programInfo) => {
     for (let i = 0; i < particleNodes.length; i++) {
@@ -379,51 +434,19 @@ const renderNodes = (gl, programInfo) => {
         if(err != gl.NO_ERROR)  {
             console.log('There has been an error: ' + err)
         }
+        const nodeRho = Math.sqrt(
+            node.position[0]*node.position[0] +
+            node.position[1]*node.position[1] +
+            node.position[2]*node.position[2])
+        gl.uniform1f(programInfo.uniformLoc.particleDistance, nodeRho)
     }
 }
 
 /**
  * renders the entire frame
+ * @param {ctx} gl webgl context
+ * @param {Object} programInfo necessary info about the shader programs (attrib/uniform loc, etc.)
  */
 const renderFrame = (gl, programInfo) => {
     renderNodes(gl, programInfo)
-}
-
-/**
- * Draws the scene
- * @param {*} gl webgl context
- * @param {*} programInfo info about the shader program
- * @param {*} buffers buffers to use for drawing
- * @param {*} mesh mesh to draw
- */
-const drawScene = (gl, programInfo, buffers, mesh) => {
-
-
-    const modViewMat = mat4.create()
-
-    mat4.translate(
-        modViewMat,
-        modViewMat,
-        [0.0, 0.0, -6.0]
-    )
-    
-    mat4.rotateY(modViewMat, modViewMat, Math.PI / 2.9)
-    mat4.rotateX(modViewMat, modViewMat, Math.PI / 2.9)
-    mat4.scale(modViewMat, modViewMat, [.05, .05, .05])
-
-
-    
-
-    {
-        const offset = 0
-        const vertexCount = mesh.indices.length
-        const type = gl.UNSIGNED_SHORT
-        gl.drawElements(gl.TRIANGLES, vertexCount, type, offset)
-
-        // check if saul goodman
-        let err = gl.getError()
-        if(err != gl.NO_ERROR) {
-            console.log('There was an error drawing the scene: ' + err)
-        }
-    }
 }

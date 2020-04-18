@@ -2,6 +2,11 @@
  * Loads a texture
  */
 
+/**
+ * loads a texture
+ * @param {ctx} gl webgl contet
+ * @param {string} url url to texture image
+ */
 const loadTexture = (gl, url) => {
     const texture = gl.createTexture()
     gl.bindTexture(gl.TEXTURE_2D, texture)
@@ -41,6 +46,8 @@ const loadTexture = (gl, url) => {
         console.log('There was an error loading the image into the texture: ' + loadImErr)
     }
     image.src = url
+
+    //while (!image.complete) { } // wait until image is loaded
 
     return texture
 }

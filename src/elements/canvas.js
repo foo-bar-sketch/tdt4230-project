@@ -3,7 +3,6 @@
  * Creates the canvas we need
  * 
  */
-
 const Canvas = () => {
     const element = document.createElement('canvas')
 

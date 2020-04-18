@@ -61,6 +61,7 @@ module.exports = {
       },
       {
           test: /\.(ogg|mp3|wav)$/i,
+          include: path.resolve(__dirname, 'res/mus'),
           use: 'file-loader'
       }
     ]

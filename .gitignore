@@ -1,0 +1,16 @@
+// ignore pdf and image files
+*.pdf
+*.jpeg
+*.jpg
+*.png
+*.wav
+
+// ignore modules
+node_modules
+
+// ignore dist
+dist
+
+// ignore resources
+res
+
