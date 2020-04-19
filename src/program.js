@@ -18,8 +18,10 @@ import sails from '../res/mus/sails.wav'
 //import bad from '../res/mus/bad-guy.wav'
 //import tex from '../res/textures/blueSmokey.png'
 //import tex from '../res/textures/drop.png'
+import tex from '../res/textures/water.png'
+//import tex from '../res/textures/fire.png'
 //import tex from '../res/textures/fire2.jpg'
-import tex from '../res/textures/water2.png'
+//import tex from '../res/textures/water2.png'
 //import tex from '../res/textures/sand.jpg'
 
 /**
@@ -44,7 +46,7 @@ var particleVectors = []
 var particleNodes = []
 
 var cameraInfo = {
-    position: [0.0, 0.0, -20.0],
+    position: [0.0, 0.0, -15.0],
     rotation: [0.0, 0.0, 0.0]
 }
 
@@ -93,7 +95,10 @@ export const init = () => {
     startButton = document.createElement('button')
     startButton.id = 'start-button'
     startButton.style.float = 'left'
-    startButton.style.margin = '0 2px 0 2px'
+    startButton.style.backgroundColor = '#333'
+    startButton.style.color = '#eee'
+    startButton.style.border = '1px solid #eee'
+    startButton.style.margin = '0 5px 0 5px'
     startButton.innerHTML = 'start'
     startButton.onclick = () => {
         let val = parseInt(document.getElementById('particle-count').value)
@@ -136,19 +141,66 @@ export const init = () => {
 
     stopButton = document.createElement('button')
     stopButton.style.float = 'left'
-    stopButton.style.margin = '0 2px 0 2px'
+    stopButton.style.border = '1px solid #eee'
+    stopButton.style.backgroundColor = '#333'
+    stopButton.style.color = '#eee'
+    stopButton.style.margin = '0 5px 0 5px'
     stopButton.innerHTML = 'stop'
     stopButton.onclick = () => {
         location.reload()
     }
 
+    document.body.style.fontFamily = 'Monospace'
+    document.body.style.fonsSize = '1em'
+    
+    const particleCountCont = document.createElement('div')
+    particleCountCont.style.margin = '0 5px 0 5px'
+    const particleText = document.createElement('p')
+    particleText.innerHTML = 'Particle Count: 2^'
+    particleText.style.margin = '3px 0 0 0'
+    particleText.style.float = 'left'
+    particleText.style.color = '#eee'
     particleCount = document.createElement('input')
     particleCount.id = 'particle-count'
     particleCount.setAttribute('type', 'text')
     particleCount.style.margin = '0 2px 0 2px'
     particleCount.style.float = 'left'
+    particleCount.style.border = '1px solid #eee'
+    particleCount.style.backgroundColor = '#333'
+    particleCount.style.color = '#eee'
     particleCount.value = '11'
     particleCount.style.width = 15 + 'px'
+    particleCountCont.appendChild(particleText)
+    particleCountCont.appendChild(particleCount)
+
+    //const audioFileCont = document.createElement('div')
+    //audioFileCont.style.margin = '0 5px 0 5px'
+    //const audioText = document.createElement('p')
+    //audioText.innerHTML = 'Audio Track: '
+    //audioText.style.margin = '3px 0 0 0'
+    //audioText.style.float = 'left'
+    //audioText.style.color = '#eee'
+    //const audioFile = document.createElement('select')
+    //audioFile.id = 'audiofile'
+    //audioFile.style.float = 'left'
+    //audioFile.style.border = '1px solid #eee'
+    //audioFile.style.backgroundColor = '#333'
+    //audioFile.style.color = '#eee'
+    //const badOption = document.createElement('option')
+    //badOption.innerHTML = 'Bad Guy'
+    //badOption.setAttribute('value', 'bad')
+    //const sailsOption = document.createElement('option')
+    //sailsOption.innerHTML = 'Black Sails'
+    //sailsOption.setAttribute('value', 'sails')
+    //const congOption = document.createElement('option')
+    //congOption.innerHTML = 'Congregation'
+    //congOption.setAttribute('value', 'cong')
+    //audioFile.appendChild(sailsOption)
+    //audioFile.appendChild(congOption)
+    //audioFile.appendChild(badOption)
+    //audioFileCont.appendChild(audioText)
+    //audioFileCont.appendChild(audioFile)
+    //console.log(audioFile.value)
 
     cons = document.createElement('div')
     cons.style.float = 'right'
@@ -162,7 +214,7 @@ export const init = () => {
 
     panel.appendChild(startButton)
     panel.appendChild(stopButton)
-    panel.appendChild(particleCount)
+    panel.appendChild(particleCountCont)
     panel.appendChild(cons)
 
     document.body.appendChild(panel)
@@ -309,14 +361,13 @@ const initScene = (gl, particles, shape, programInfo) => {
 const updateFrame = (gl, programInfo, audioTime, currentTime, deltaTime) => {
     let n = particleNodes.length
     // make the radius bounce
-    var maxRho = 1
+    var maxRho = 0.4
     var minRho = 0
     var index = Math.round(audioTime*sampleRate) % amplitudes.length
     cons.innerHTML = 'index: ' + index + '<br />played: ' + currentTime
     let lastIndex = index > 0 ? index - 1 : 0
     let nextIndex = index < n -1 ? index + 1: n - 1
-    let amplitude = amplitudes[index +2]
-    let rateOfChange = (amplitudes[nextIndex] + amplitude + amplitudes[lastIndex]) / 3
+    let amplitude = amplitudes[index]
     
     //console.log(rho)
     gl.uniform1f(programInfo.uniformLoc.superRho, amplitude*maxRho)

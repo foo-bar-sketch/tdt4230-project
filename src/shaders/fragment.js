@@ -29,7 +29,7 @@ const fragmentShader = `
         mediump vec3 specColor = vec3(0.0);
         mediump float ambLightInt = 1.0;
         mediump vec3 ambCol = ambLightInt * texCol.rgb;
-        mediump float distanceCol = 1.0 / (particleDistance);
+        mediump float distanceCol = 1.0 / (particleDistance + 1.0);
 
         for(int i = 0; i < 2; i++) {
             mediump vec3 lightPos = vec3(0.0);
@@ -43,15 +43,15 @@ const fragmentShader = `
             mediump vec3 camDir = normalize(camLoc - position_out);
 
             // compute light left w.r.t distance
-            mediump float la = 1.0;
-            mediump float lb = 0.005;
-            mediump float lc = 0.001;
+            mediump float la = 0.1;
+            mediump float lb = 0.05;
+            mediump float lc = 0.01;
             mediump float leftOverLight = 1.0 / distance(lightPos, position_out);
 
             mediump float diffLightInt = max(dot(normal, lightDir), 0.0);
             mediump float specLightInt = pow(max(dot(camDir, specDir), 0.0), shinyness);
-            diffColor += diffLightInt * texCol.rgb * leftOverLight;
-            specColor += specLightInt * texCol.rgb * leftOverLight;
+            diffColor += diffLightInt * texCol.rgb * leftOverLight*distanceCol;
+            specColor += specLightInt * texCol.rgb * leftOverLight*distanceCol;
         }
         mediump vec4 color = vec4((diffColor + specColor + ambCol), texCol.a*distanceCol); //fragCol * distanceCol;
         gl_FragColor = color;
